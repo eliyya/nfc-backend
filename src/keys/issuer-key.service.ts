@@ -23,8 +23,6 @@ export class IssuerKeyService {
 
         this.privateKey = createPrivateKey(privateKeyPem)
         this.publicKey = createPublicKey(publicKeyPem)
-
-        console.log(this.getPublicKeyBase64())
     }
 
     getKeyId(): number {
