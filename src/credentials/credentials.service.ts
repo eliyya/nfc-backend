@@ -12,6 +12,9 @@ export class CredentialsService {
             keyId: this.issuerKeyService.getKeyId(),
             userId,
         }
+        console.log('Requested ID:', userId)
+        console.log('\t├─  Signed with key:', this.issuerKeyService.getKeyId())
+        console.log('\t└─  Payload:', payload)
 
         const payloadBytes = encodeCard(payload)
 
