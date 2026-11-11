@@ -23,6 +23,7 @@
         "db:migrate": "prisma db migrate",
         "db:contract": "prisma contract emit",
         "db:plan": "prisma migration plan",
+        "keys:export-root": "node --env-file-if-exists=.env scripts/export-root-public-key.mts",
         "vercel-build": "pnpm build && pnpm db:migrate --yes",
         "format:check": "vp fmt . --check"
     },

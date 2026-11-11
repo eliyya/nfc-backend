@@ -19,6 +19,31 @@ No ejecutes el generador antiguo para reemplazar una llave en uso. La llave priv
 
 ## Desarrollo
 
+### Exportar la raíz pública
+
+```powershell
+pnpm keys:export-root
+pnpm keys:export-root --format base64 --out keys/root-public.base64.txt
+```
+
+El comando lee la raíz existente de `root_keys` mediante Prisma y exporta solamente
+su clave pública Ed25519. No crea, reemplaza ni rota las claves de la base. El archivo
+por defecto es `keys/root-public.pem`; la huella SHA-256 se muestra en la consola.
+`--out -` escribe la clave en la salida estándar y `--help` describe las opciones.
+Si el archivo ya contiene otra clave, el comando pide elegir otro destino o usar
+`--force` explícitamente.
+
+Se utiliza `DATABASE_URL` del entorno o del `.env` local. Para exportar la raíz de
+Neon, configura esa conexión antes de ejecutar el comando: una conexión local
+exporta la raíz local, que puede ser distinta. También puedes cargar otro archivo:
+
+```powershell
+node --env-file=.env.production.local scripts/export-root-public-key.mts
+```
+
+Instala esta raíz por un canal de confianza en Go y Android. No la sustituyas
+automáticamente al descargar cada manifiesto; su función es autenticarlo.
+
 `pnpm start:dev` carga `.env` automáticamente. `pnpm build` compila la aplicación y `pnpm start:prod` ejecuta el resultado.
 
 - `POST /credentials` con `{ "userId": "00123456" }` devuelve `{ "credential": "<base64>" }`.
