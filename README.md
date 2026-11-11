@@ -9,19 +9,20 @@ Requiere Node.js 24.11+ y pnpm. Prisma 8 está en versión candidata: se fijan `
 1. Ejecuta `pnpm install`.
 2. Copia `.env.example` a `.env` y configura `DATABASE_URL` con tu conexión PostgreSQL, usando TLS según tu proveedor. Para Vercel usa una conexión con pool del proveedor.
 3. Para desarrollo local, ejecuta `pnpm db:migrate`. En Vercel las migraciones se aplican automáticamente durante el despliegue.
-   Al iniciar, si falta la llave #1, el backend genera un par Ed25519 y lo guarda automáticamente. No requiere seed. Las instancias concurrentes conservan la misma llave mediante una inserción que omite conflictos y una lectura posterior de la llave persistida.
+   Al iniciar, se crea también una llave raíz Ed25519 en `root_keys` si no existe. Si no hay llaves emisoras, el backend genera la llave #1 como un par Ed25519 y lo guarda automáticamente. No requiere seed. Las instancias concurrentes conservan la misma llave mediante una inserción que omite conflictos y una lectura posterior de la llave persistida.
 
 Opcionalmente, para conservar tarjetas emitidas con las llaves locales anteriores, ejecuta `pnpm db:seed` antes del primer arranque para importar `keys/issuer-1-private.pem` y `keys/issuer-1-public.pem`. Valida que coincidan y conserva la llave para que las tarjetas existentes sigan siendo válidas. Si ya existe la llave #1, no la reemplaza.
 
 La importación manual solo es necesaria si deseas conservar una llave anterior; no se ejecuta en el despliegue normal.
 
-No ejecutes el generador antiguo para reemplazar una llave en uso. La llave privada es un secreto: restringe el acceso a la tabla y utiliza una conexión cifrada en producción. El usuario de ejecución necesita SELECT e INSERT en `issuer_keys` para inicializar la llave automáticamente; las migraciones necesitan permisos de creación de tablas. La conexión usada durante el despliegue debe tener permisos para aplicar las migraciones.
+No ejecutes el generador antiguo para reemplazar una llave en uso. La llave privada es un secreto: restringe el acceso a la tabla y utiliza una conexión cifrada en producción. El usuario de ejecución necesita SELECT e INSERT en `issuer_keys` y `root_keys` para inicializar la llave automáticamente; las migraciones necesitan permisos de creación de tablas. La conexión usada durante el despliegue debe tener permisos para aplicar las migraciones.
 
 ## Desarrollo
 
 `pnpm start:dev` carga `.env` automáticamente. `pnpm build` compila la aplicación y `pnpm start:prod` ejecuta el resultado.
 
 - `POST /credentials` con `{ "userId": "00123456" }` devuelve `{ "credential": "<base64>" }`.
+- `GET /keys` devuelve un manifiesto con las llaves públicas emisoras, estados y fechas (segundos Unix), firmado por la llave raíz. Los clientes deben tener su llave pública raíz de confianza provisionada por un canal confiable. Las llaves privadas nunca se incluyen en la respuesta. Se firma con la emisora ACTIVE de mayor keyId; ROTATED y REVOKED se publican para que los clientes puedan aplicar su estado. Cambios de llaves o estados requieren reiniciar las instancias.
 - El formato sigue siendo 6 bytes de payload y 64 bytes de firma, versión 1 y keyId 1.
 - `pnpm format` aplica el formato con `vp fmt`; `pnpm format:check` lo verifica y `pnpm lint` ejecuta `vp lint` con análisis de tipos. La configuración está en `vite.config.ts`.
 - `pnpm test`, `pnpm test:e2e` y `pnpm lint` verifican la aplicación. Las pruebas sustituyen la base y usan una llave efímera; no requieren secretos reales.

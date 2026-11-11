@@ -1,0 +1,121 @@
+[
+  {
+    "id": "table.root_keys",
+    "label": "Create table \"root_keys\"",
+    "summary": "Creates table \"root_keys\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "root_keys"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"root_keys\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"root_keys\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"root_keys\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"root_keys\"",
+        "sql": "CREATE TABLE \"public\".\"root_keys\" (\n  \"created_at\" timestamptz(6) DEFAULT (now()) NOT NULL,\n  \"key_id\" int2 NOT NULL,\n  \"private_key_pem\" text NOT NULL,\n  PRIMARY KEY (\"key_id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"root_keys\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": [
+          "\"public\".\"root_keys\"",
+          "r",
+          "p"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"root_keys\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.issuer_keys.status",
+    "label": "Add column \"status\" to \"issuer_keys\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "status",
+        "table": "issuer_keys"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"status\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "issuer_keys",
+          "status"
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"status\" on \"issuer_keys\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"status\"",
+        "sql": "ALTER TABLE \"public\".\"issuer_keys\" ADD COLUMN \"status\" text DEFAULT 'ACTIVE' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"status\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "issuer_keys",
+          "status"
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"status\" on \"issuer_keys\""
+        }
+      },
+      {
+        "description": "verify column \"status\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "issuer_keys",
+          "status",
+          "text"
+        ]
+      },
+      {
+        "description": "verify column \"status\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "issuer_keys",
+          "status",
+          "NO"
+        ]
+      }
+    ]
+  }
+]

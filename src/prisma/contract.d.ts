@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'96ed735ec5a9b8f8f1c9a6ec357ccdb0c150c59d1876646149478212cd9166f5'>;
+  StorageHashBase<'eeab4a7b951da4f61283666b3f6949e942e5b928ee0d8fb4727a45f7a8729b30'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -273,6 +273,13 @@ export namespace Models {
     createdAt: FieldOutputTypes['public']['IssuerKey']['createdAt'];
     keyId: FieldOutputTypes['public']['IssuerKey']['keyId'];
     privateKeyPem: FieldOutputTypes['public']['IssuerKey']['privateKeyPem'];
+    status: FieldOutputTypes['public']['IssuerKey']['status'];
+    readonly [RelationKeys]?: never;
+  };
+  export type public_RootKey = {
+    createdAt: FieldOutputTypes['public']['RootKey']['createdAt'];
+    keyId: FieldOutputTypes['public']['RootKey']['keyId'];
+    privateKeyPem: FieldOutputTypes['public']['RootKey']['privateKeyPem'];
     readonly [RelationKeys]?: never;
   };
 }
@@ -280,6 +287,7 @@ export namespace Models {
 export declare const models: {
   public: {
     IssuerKey: Models.public_IssuerKey;
+    RootKey: Models.public_RootKey;
   };
 };
 
@@ -323,6 +331,44 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly many: false;
                 };
+                readonly status: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'ACTIVE'>;
+                  };
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['key_id'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [];
+            };
+            readonly root_keys: {
+              columns: {
+                readonly created_at: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly typeParams: { readonly precision: 6 };
+                  readonly many: false;
+                };
+                readonly key_id: {
+                  readonly dataType: 'pg/int2';
+                  readonly codecId: 'pg/int2@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly private_key_pem: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['key_id'] };
               uniques: readonly [];
@@ -344,6 +390,7 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'IssuerKey';
     };
+    readonly root_keys: { readonly namespace: 'public' & NamespaceId; readonly model: 'RootKey' };
   };
   readonly domain: {
     readonly namespaces: {
@@ -367,10 +414,45 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
             readonly relations: Record<string, never>;
             readonly storage: {
               readonly table: 'issuer_keys';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly createdAt: { readonly column: 'created_at' };
+                readonly keyId: { readonly column: 'key_id' };
+                readonly privateKeyPem: { readonly column: 'private_key_pem' };
+                readonly status: { readonly column: 'status' };
+              };
+            };
+          };
+          readonly RootKey: {
+            readonly fields: {
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly typeParams: { readonly precision: 6 };
+                };
+              };
+              readonly keyId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int2@1' };
+              };
+              readonly privateKeyPem: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'root_keys';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly createdAt: { readonly column: 'created_at' };

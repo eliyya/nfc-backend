@@ -3,9 +3,18 @@ datasource db {
 }
 
 model IssuerKey {
+  status String @default("ACTIVE")
   keyId Int @id @map("key_id") @db.SmallInt
   privateKeyPem String @map("private_key_pem")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("issuer_keys")
+}
+
+model RootKey {
+  keyId Int @id @map("key_id") @db.SmallInt
+  privateKeyPem String @map("private_key_pem")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("root_keys")
 }

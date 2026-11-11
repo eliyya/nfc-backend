@@ -7,6 +7,10 @@
     "issuer_keys": {
       "model": "IssuerKey",
       "namespace": "public"
+    },
+    "root_keys": {
+      "model": "RootKey",
+      "namespace": "public"
     }
   },
   "domain": {
@@ -14,6 +18,60 @@
       "public": {
         "models": {
           "IssuerKey": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 6
+                  }
+                }
+              },
+              "keyId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int2@1",
+                  "kind": "scalar"
+                }
+              },
+              "privateKeyPem": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "created_at"
+                },
+                "keyId": {
+                  "column": "key_id"
+                },
+                "privateKeyPem": {
+                  "column": "private_key_pem"
+                },
+                "status": {
+                  "column": "status"
+                }
+              },
+              "namespaceId": "public",
+              "table": "issuer_keys"
+            }
+          },
+          "RootKey": {
             "fields": {
               "createdAt": {
                 "nullable": false,
@@ -54,7 +112,7 @@
                 }
               },
               "namespaceId": "public",
-              "table": "issuer_keys"
+              "table": "root_keys"
             }
           }
         }
@@ -67,6 +125,49 @@
         "entries": {
           "table": {
             "issuer_keys": {
+              "columns": {
+                "created_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 6
+                  }
+                },
+                "key_id": {
+                  "codecId": "pg/int2@1",
+                  "dataType": "pg/int2",
+                  "nullable": false
+                },
+                "private_key_pem": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "ACTIVE"
+                  },
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "key_id"
+                ]
+              },
+              "uniques": []
+            },
+            "root_keys": {
               "columns": {
                 "created_at": {
                   "codecId": "pg/timestamptz-string@1",
@@ -106,7 +207,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "96ed735ec5a9b8f8f1c9a6ec357ccdb0c150c59d1876646149478212cd9166f5"
+    "storageHash": "eeab4a7b951da4f61283666b3f6949e942e5b928ee0d8fb4727a45f7a8729b30"
   },
   "capabilities": {
     "postgres": {
