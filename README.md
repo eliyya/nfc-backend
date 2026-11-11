@@ -4,7 +4,7 @@ API NestJS que emite credenciales NFC firmadas con Ed25519. Guarda las llaves en
 
 ## Preparación
 
-Requiere Node.js 24.11+ y pnpm. Prisma 8 está en versión candidata: se fijan `prisma@8.0.0-rc.27` y `@prisma/orm-postgres@8.0.0-rc.20`, siguiendo la guía oficial de Prisma 8. Esta versión usa contratos y `prisma db migrate`, sin `prisma generate` ni `@prisma/client`.
+Requiere Node.js 26 (versión local fijada: 26.13.0) y pnpm. package.json, .nvmrc y .node-version declaran esa versión. Prisma 8 está en versión candidata: se fijan `prisma@8.0.0-rc.27` y `@prisma/orm-postgres@8.0.0-rc.20`, siguiendo la guía oficial de Prisma 8. Esta versión usa contratos y `prisma db migrate`, sin `prisma generate` ni `@prisma/client`.
 
 1. Ejecuta `pnpm install`.
 2. Copia `.env.example` a `.env` y configura `DATABASE_URL` con tu conexión PostgreSQL, usando TLS según tu proveedor. Para Vercel usa una conexión con pool del proveedor.
@@ -31,7 +31,7 @@ El esquema está en `prisma/schema.prisma` y la configuración en `prisma.config
 
 ## Vercel
 
-1. Importa el repositorio como proyecto NestJS; `vercel.json` incluye el framework y `src/main.ts` es el punto de entrada reconocido.
+1. Usa Node.js 26 en Vercel, declarado mediante engines.node en package.json. Vercel administra la versión de parche del runtime. Importa el repositorio como proyecto NestJS; `vercel.json` incluye el framework y `src/main.ts` es el punto de entrada reconocido.
 2. Configura `DATABASE_URL` en las variables del proyecto para cada entorno que uses.
 3. La conexión `DATABASE_URL` debe estar disponible durante el build y tener permisos para aplicar las migraciones. No necesitas ejecutar migraciones manuales ni seed.
 4. Despliega desde Vercel o con `pnpm deploy`.
