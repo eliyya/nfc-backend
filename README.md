@@ -1,124 +1,40 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NFC backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API NestJS que emite credenciales NFC firmadas con Ed25519. Guarda las llaves en PostgreSQL mediante Prisma 8; el servidor no usa archivos PEM.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Preparación
 
-## Description
+Requiere Node.js 24.11+ y pnpm. Prisma 8 está en versión candidata: se fijan `prisma@8.0.0-rc.27` y `@prisma/orm-postgres@8.0.0-rc.20`, siguiendo la guía oficial de Prisma 8. Esta versión usa contratos y `prisma db migrate`, sin `prisma generate` ni `@prisma/client`.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+1. Ejecuta `pnpm install`.
+2. Copia `.env.example` a `.env` y configura `DATABASE_URL` con tu conexión PostgreSQL, usando TLS según tu proveedor. Para Vercel usa una conexión con pool del proveedor.
+3. Para desarrollo local, ejecuta `pnpm db:migrate`. En Vercel las migraciones se aplican automáticamente durante el despliegue.
+   Al iniciar, si falta la llave #1, el backend genera un par Ed25519 y lo guarda automáticamente. No requiere seed. Las instancias concurrentes conservan la misma llave mediante una inserción que omite conflictos y una lectura posterior de la llave persistida.
 
-## Project setup
+Opcionalmente, para conservar tarjetas emitidas con las llaves locales anteriores, ejecuta `pnpm db:seed` antes del primer arranque para importar `keys/issuer-1-private.pem` y `keys/issuer-1-public.pem`. Valida que coincidan y conserva la llave para que las tarjetas existentes sigan siendo válidas. Si ya existe la llave #1, no la reemplaza.
 
-```bash
-$ pnpm install
-```
+La importación manual solo es necesaria si deseas conservar una llave anterior; no se ejecuta en el despliegue normal.
 
-## Compile and run the project
+No ejecutes el generador antiguo para reemplazar una llave en uso. La llave privada es un secreto: restringe el acceso a la tabla y utiliza una conexión cifrada en producción. El usuario de ejecución necesita SELECT e INSERT en `issuer_keys` para inicializar la llave automáticamente; las migraciones necesitan permisos de creación de tablas. La conexión usada durante el despliegue debe tener permisos para aplicar las migraciones.
 
-```bash
-# development
-$ pnpm run start
+## Desarrollo
 
-# watch mode
-$ pnpm run start:dev
+`pnpm start:dev` carga `.env` automáticamente. `pnpm build` compila la aplicación y `pnpm start:prod` ejecuta el resultado.
 
-# production mode
-$ pnpm run start:prod
-```
+- `POST /credentials` con `{ "userId": "00123456" }` devuelve `{ "credential": "<base64>" }`.
+- El formato sigue siendo 6 bytes de payload y 64 bytes de firma, versión 1 y keyId 1.
+- `pnpm format` aplica el formato con `vp fmt`; `pnpm format:check` lo verifica y `pnpm lint` ejecuta `vp lint` con análisis de tipos. La configuración está en `vite.config.ts`.
+- `pnpm test`, `pnpm test:e2e` y `pnpm lint` verifican la aplicación. Las pruebas sustituyen la base y usan una llave efímera; no requieren secretos reales.
 
-## Run tests
+El esquema está en `prisma/schema.prisma` y la configuración en `prisma.config.ts`. Después de cambiarlo: ejecuta `pnpm db:contract`, `pnpm db:plan --name nombre` y revisa la migración antes de `pnpm db:migrate --advance-ref db`. Guarda en Git los contratos emitidos de `src/prisma/` y `migrations/`. La migración inicial asume una base vacía; para incorporar una base existente, verifica primero que su esquema coincida y sigue el procedimiento de `prisma db sign` de Prisma 8.
 
-```bash
-# unit tests
-$ pnpm run test
+## Vercel
 
-# e2e tests
-$ pnpm run test:e2e
+1. Importa el repositorio como proyecto NestJS; `vercel.json` incluye el framework y `src/main.ts` es el punto de entrada reconocido.
+2. Configura `DATABASE_URL` en las variables del proyecto para cada entorno que uses.
+3. La conexión `DATABASE_URL` debe estar disponible durante el build y tener permisos para aplicar las migraciones. No necesitas ejecutar migraciones manuales ni seed.
+4. Despliega desde Vercel o con `pnpm deploy`.
 
-# test coverage
-$ pnpm run test:cov
-```
+`vercel.json` ejecuta `pnpm run vercel-build`: primero compila con `pnpm build` y, si termina correctamente, aplica las migraciones pendientes con `pnpm db:migrate --yes`. Si falla la compilación o una migración, el despliegue se detiene. Las migraciones provienen de los archivos guardados en Git; el despliegue no genera nuevas migraciones. El build de Vercel necesita acceso a PostgreSQL; `pnpm build` local sigue compilando sin conectarse a la base. No se requieren archivos PEM en Vercel. Si falta la llave, se genera y persiste durante el arranque. Si falla la conexión o la escritura, el arranque falla explícitamente y no usa una llave temporal. Cada instancia carga la llave al iniciar y la mantiene en memoria; vuelve a desplegar después de cambiarla. Usa una base independiente para previews que no deban firmar credenciales reales.
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project:
-
-```bash
-$ pnpm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Referencias: [Prisma 8 con PostgreSQL](https://docs.prisma.io/docs/guides/upgrade-prisma-orm/postgresql), [NestJS en Vercel](https://vercel.com/kb/guide/ship-a-nestjs-app-on-vercel).

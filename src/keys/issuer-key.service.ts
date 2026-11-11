@@ -1,28 +1,22 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, OnModuleInit } from '@nestjs/common'
 import { createPrivateKey, createPublicKey, KeyObject, sign } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { DatabaseService } from './database.service.js'
 
 @Injectable()
-export class IssuerKeyService {
+export class IssuerKeyService implements OnModuleInit {
     private readonly keyId = 1
+    private privateKey: KeyObject
+    private publicKey: KeyObject
 
-    private readonly privateKey: KeyObject
-    private readonly publicKey: KeyObject
+    constructor(private readonly database: DatabaseService) {}
 
-    constructor() {
-        const privateKeyPem = readFileSync(
-            join(process.cwd(), 'keys', 'issuer-1-private.pem'),
-            'utf8',
-        )
-
-        const publicKeyPem = readFileSync(
-            join(process.cwd(), 'keys', 'issuer-1-public.pem'),
-            'utf8',
-        )
-
-        this.privateKey = createPrivateKey(privateKeyPem)
-        this.publicKey = createPublicKey(publicKeyPem)
+    async onModuleInit(): Promise<void> {
+        const pem = await this.database.getIssuerKey(this.keyId)
+        this.privateKey = createPrivateKey(pem)
+        if (this.privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('La llave emisora debe ser Ed25519')
+        }
+        this.publicKey = createPublicKey(this.privateKey)
     }
 
     getKeyId(): number {
@@ -38,11 +32,6 @@ export class IssuerKeyService {
     }
 
     getPublicKeyBase64(): string {
-        return this.publicKey
-            .export({
-                type: 'spki',
-                format: 'der',
-            })
-            .toString('base64')
+        return this.publicKey.export({ type: 'spki', format: 'der' }).toString('base64')
     }
 }
