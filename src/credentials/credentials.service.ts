@@ -1,25 +1,18 @@
 import { Injectable } from '@nestjs/common'
 import { IssuerKeyService } from '../keys/issuer-key.service.js'
-import { CardPayload, encodeCard } from './card-codec.js'
+import { encodeCard, type CredentialIdentifier } from './card-codec.js'
 
 @Injectable()
 export class CredentialsService {
     constructor(private readonly issuerKeyService: IssuerKeyService) {}
 
-    issue(userId: string): Buffer {
-        const payload: CardPayload = {
-            version: 1,
-            keyId: this.issuerKeyService.getKeyId(),
-            userId,
-        }
-        console.log('Requested ID:', userId)
-        console.log('\t├─  Signed with key:', this.issuerKeyService.getKeyId())
-        console.log('\t└─  Payload:', payload)
-
-        const payloadBytes = encodeCard(payload)
-
-        const signature = this.issuerKeyService.signData(payloadBytes)
-
-        return Buffer.concat([payloadBytes, signature])
+    issue(credential: string | CredentialIdentifier): Buffer {
+        const keyId = this.issuerKeyService.getKeyId()
+        const payload = encodeCard(
+            typeof credential === 'string'
+                ? { version: 1, keyId, userId: credential }
+                : { version: 2, keyId, type: credential.type, identifier: credential.identifier },
+        )
+        return Buffer.concat([payload, this.issuerKeyService.signData(payload)])
     }
 }

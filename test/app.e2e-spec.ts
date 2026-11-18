@@ -49,6 +49,43 @@ describe('AppController (e2e)', () => {
         expect(verify(null, card.subarray(0, 6), publicKey, card.subarray(6))).toBe(true)
     })
 
+    it.each([
+        { type: 'student', identifier: '00123456', typeCode: 1 },
+        { type: 'teacher', identifier: 'GODE561231GR8', typeCode: 2 },
+        { type: 'teacher', identifier: 'GÑDE561231GR8', typeCode: 2 },
+        { type: 'book', identifier: 'ISC-001-0044-01', typeCode: 3 },
+    ])(
+        'firma la credencial v2 de $type para $identifier',
+        async ({ type, identifier, typeCode }) => {
+            const response = await request(app.getHttpServer())
+                .post('/credentials')
+                .send({ type, identifier })
+                .expect(201)
+            const bytes = Buffer.from(response.body.credential, 'base64')
+            const payload = bytes.subarray(0, -64)
+            const signature = bytes.subarray(-64)
+            const text = Buffer.from(identifier)
+            expect(payload).toEqual(
+                Buffer.concat([Buffer.from([2, 1, typeCode, text.length]), text]),
+            )
+            expect(verify(null, payload, publicKey, signature)).toBe(true)
+            payload[2] ^= 1
+            expect(verify(null, payload, publicKey, signature)).toBe(false)
+        },
+    )
+
+    it.each([
+        {},
+        { userId: '123' },
+        { type: 'other', identifier: '00123456' },
+        { type: 'student', identifier: 12345678 },
+        { type: 'teacher', identifier: '00123456' },
+        { type: 'book', identifier: 'ISC-001-0044' },
+        { type: 'book', identifier: 'ISC-001-0044-01', userId: '00123456' },
+    ])('rechaza una solicitud de emisión inválida (%j)', async (body) => {
+        await request(app.getHttpServer()).post('/credentials').send(body).expect(400)
+    })
+
     it('/keys (GET) devuelve un manifiesto firmado por la raíz con la llave emisora', async () => {
         const response = await request(app.getHttpServer()).get('/keys').expect(200)
         const bytes = Buffer.from(response.body.manifest, 'base64')

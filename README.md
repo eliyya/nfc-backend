@@ -46,11 +46,22 @@ automáticamente al descargar cada manifiesto; su función es autenticarlo.
 
 `pnpm start:dev` carga `.env` automáticamente. `pnpm build` compila la aplicación y `pnpm start:prod` ejecuta el resultado.
 
-- `POST /credentials` con `{ "userId": "00123456" }` devuelve `{ "credential": "<base64>" }`.
+- `POST /credentials` devuelve `{ "credential": "<base64>" }`. Los clientes actuales envían `type` e `identifier` para emitir v2. El cuerpo anterior `{ "userId": "00123456" }` sigue emitiendo una tarjeta v1.
 - `GET /keys` devuelve un manifiesto con las llaves públicas emisoras, estados y fechas (segundos Unix), firmado por la llave raíz. Los clientes deben tener su llave pública raíz de confianza provisionada por un canal confiable. Las llaves privadas nunca se incluyen en la respuesta. Se firma con la emisora ACTIVE de mayor keyId; ROTATED y REVOKED se publican para que los clientes puedan aplicar su estado. Cambios de llaves o estados requieren reiniciar las instancias.
-- El formato sigue siendo 6 bytes de payload y 64 bytes de firma, versión 1 y keyId 1.
 - `pnpm format` aplica el formato con `vp fmt`; `pnpm format:check` lo verifica y `pnpm lint` ejecuta `vp lint` con análisis de tipos. La configuración está en `vite.config.ts`.
 - `pnpm test`, `pnpm test:e2e` y `pnpm lint` verifican la aplicación. Las pruebas sustituyen la base y usan una llave efímera; no requieren secretos reales.
+
+### Credenciales v2
+
+| Identidad                       | Ejemplo de cuerpo JSON para `POST /credentials`   | Byte de tipo |
+| ------------------------------- | ------------------------------------------------- | ------------ |
+| Número de control de estudiante | `{"type":"student","identifier":"00123456"}`      | `01`         |
+| RFC de docente                  | `{"type":"teacher","identifier":"GODE561231GR8"}` | `02`         |
+| Folio de ejemplar               | `{"type":"book","identifier":"ISC-001-0044-01"}`  | `03`         |
+
+La credencial decodificada de Base64 se guarda en el registro NDEF `application/vnd.eli.access`. Los cuatro primeros bytes son la versión (`02`), el identificador de la clave emisora, el tipo y la longitud en bytes del identificador. Siguen el identificador en UTF-8 y los 64 bytes de la firma Ed25519. El emisor firma la cabecera y el identificador juntos. La longitud total es `4 + longitud + 64`. El identificador se puede leer directamente de la tarjeta, incluido el RFC.
+
+En v1, el primer byte es `01` y la credencial ocupa 70 bytes. Su número de control ocupa cuatro bytes en orden big-endian y el lector lo presenta con ocho dígitos.
 
 El esquema está en `prisma/schema.prisma` y la configuración en `prisma.config.ts`. Después de cambiarlo: ejecuta `pnpm db:contract`, `pnpm db:plan --name nombre` y revisa la migración antes de `pnpm db:migrate --advance-ref db`. Guarda en Git los contratos emitidos de `src/prisma/` y `migrations/`. La migración inicial asume una base vacía; para incorporar una base existente, verifica primero que su esquema coincida y sigue el procedimiento de `prisma db sign` de Prisma 8.
 
